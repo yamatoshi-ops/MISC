@@ -379,3 +379,98 @@ plt.show()
 次は、これらを「安定」させるための診断ツール、**「第7講：極と安定性」**、あるいは実務で重要な**「第9講：PID制御」**のどちらを深掘りしましょうか？
 
 ---
+第7講のテーマは、制御工学における「健康診断」とも言える**「極と安定性」**です。
+
+これまでは時間軸でグラフを見てきましたが、ここでは「複素平面」という別の視点からシステムを眺めます。システムの安定性は、伝達関数の分母をゼロにする値である**「極（Pole）」**の位置だけで決まるという、非常に強力な理論をPythonで確認しましょう。
+
+---
+
+## 第5回：極の配置とシステムの安定性
+
+### 1. 学習のターゲット（テキスト第7講より）
+* **極（Pole）**: 伝達関数の分母多項式 $A(s) = 0$ の根。
+* **安定の条件**: 全ての極の実部が「負」であること（複素平面の左半分にあること）。
+* **不安定な挙動**: 極の実部が「正」になると、出力は時間とともに無限に発散する。
+
+### 2. Pythonによる実装例：極配置の可視化
+
+極の位置が左右に動くことで、時間応答がどう変わるかをプロットします。
+
+```python
+import control
+import matplotlib.pyplot as plt
+import numpy as np
+
+# 1. 様々な極を持つシステムの定義
+# ケースA: 安定 (極が -1)
+# ケースB: 境界 (極が 0)
+# ケースC: 不安定 (極が +0.5)
+systems = {
+    "Stable (s=-1)": control.TransferFunction([1], [1, 1]),
+    "Marginal (s=0)": control.TransferFunction([1], [1, 0]),
+    "Unstable (s=0.5)": control.TransferFunction([1], [1, -0.5])
+}
+
+t = np.linspace(0, 10, 100)
+
+plt.figure(figsize=(12, 5))
+
+# --- 左図：時間応答 (ステップ応答) ---
+plt.subplot(1, 2, 1)
+for label, sys in systems.items():
+    t, y = control.step_response(sys, t)
+    plt.plot(t, y, label=label)
+plt.axhline(0, color='black', lw=1)
+plt.title("Step Response and Stability")
+plt.xlabel("Time [s]")
+plt.ylabel("Output y(t)")
+plt.legend()
+plt.grid(True)
+
+# --- 右図：極配置 (S-plane) ---
+plt.subplot(1, 2, 2)
+for label, sys in systems.items():
+    poles = control.pole(sys)
+    plt.scatter(poles.real, poles.imag, marker='x', s=100, label=label)
+
+plt.axvline(0, color='red', lw=2) # 安定・不安定の境界線
+plt.axhline(0, color='black', lw=1)
+plt.title("Pole Locations on Complex Plane")
+plt.xlabel("Real Part")
+plt.ylabel("Imaginary Part")
+plt.grid(True)
+plt.xlim(-2, 2)
+plt.ylim(-1, 1)
+
+plt.tight_layout()
+plt.show()
+```
+
+---
+
+### 3. テキストとのリンク・解説
+
+* **「左半分」の意味（7.2.1節）**: 
+    右側のグラフを見てください。赤い縦線（実部 $=0$）より左側に「x」があるシステムだけが、左側のグラフで値が収束（安定）していることがわかります。
+* **ラウスの安定判別法（7.2.4節）**: 
+    テキストでは計算で安定性を調べますが、Pythonでは `control.pole(sys)` を叩くだけで一瞬で判別できます。実務では、この極が「どれくらい左にあるか（＝どれくらい早く収束するか）」を設計指針にします。
+* **特性方程式**: 
+    分母多項式 $s + a = 0$ の解が極です。第1回で遊んだ $a$ の正負が、まさにここで複素平面上の左右として現れています。
+
+---
+
+### 🧪 シミュレーション・サンドボックス（第5回）
+
+2次遅れ系の極の動きを見てみましょう。
+* **振動させる**: `control.TransferFunction([1], [1, 0.2, 1])` のように、sの1次の係数を小さくしてみてください。極が上下（虚数方向）に離れ、時間応答が波打ち始めます。
+* **虚軸上の極**: 1次の係数を `0` にすると、極がピッタリ虚軸（赤い線上）に乗り、グラフは一生止まらない「持続振動」になります。
+
+---
+
+### ✍️ 演習問題への応用
+テキストにある**「ラウスの表」**を書く問題の答え合わせに、`control.pole()` を使って極の実部がすべてマイナスになっているか確認してみてください。
+
+次は、いよいよ実践編の王道、**「第9講：PID制御」**でこの「極」を意図した場所に動かす手法を学びましょうか？それとも、周波数領域の**「第11講：ボード線図」**へ進みますか？
+
+---
+
